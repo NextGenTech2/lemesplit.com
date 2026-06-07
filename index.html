@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SplitEasy - Smart & Collaborative Expense Splitter</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              950: '#020617',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Supabase JS Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4"></div>
+
+  <!-- Main Navigation Header -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/80 border-b border-white/10 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+      <!-- Brand Logo -->
+      <a href="#" onclick="window.location.hash=''; window.location.reload();" class="flex items-center gap-2 hover:opacity-85 transition-all">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-r from-indigo-500 to-teal-400 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+        <span class="text-2xl font-bold brand-font tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">Split<span class="text-teal-400">Easy</span></span>
+      </a>
+
+      <!-- Mode Switcher Tabs -->
+      <div class="flex bg-slate-900/90 border border-white/10 p-1 rounded-xl shadow-inner max-w-xs w-full sm:w-auto">
+        <button id="tab-quick-split" class="flex-1 sm:flex-initial px-4 py-2 text-sm rounded-lg text-slate-300 hover:text-white transition-all flex items-center justify-center gap-2 tab-active">
+          <i class="fa-solid fa-utensils text-xs"></i> Quick Split
+        </button>
+        <button id="tab-trip-mode" class="flex-1 sm:flex-initial px-4 py-2 text-sm rounded-lg text-slate-300 hover:text-white transition-all flex items-center justify-center gap-2">
+          <i class="fa-solid fa-campground text-xs"></i> Trip Mode
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="max-w-7xl mx-auto px-4 py-6 sm:py-8 min-h-[calc(100vh-130px)]">
+    
+    <!-- ========================================== -->
+    <!-- VIEW A: QUICK SPLIT (OFFLINE MODE)         -->
+    <!-- ========================================== -->
+    <div id="view-quick-split" class="animate-fade-in space-y-6">
+      
+      <!-- Top banner description -->
+      <div class="text-center sm:text-left max-w-xl">
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-gradient">Instant Quick Split</h2>
+        <p class="text-sm text-slate-400 mt-1">Settle restaurant bills or grocery bills in 2 minutes. Entirely offline, no setup required.</p>
+      </div>
+
+      <!-- Quick Split Board -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Side: Inputs -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- Step 1: Manage Members -->
+          <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
+            <h3 class="text-md font-bold uppercase tracking-wider text-teal-400 mb-3 flex items-center gap-2">
+              <span class="h-6 w-6 rounded-full bg-teal-400/10 text-teal-400 flex items-center justify-center text-xs">1</span>
+              Add Group Members
+            </h3>
+            
+            <form id="qs-member-form" class="flex gap-2">
+              <input type="text" id="qs-member-input" placeholder="Enter name (e.g. Alice, Bob)" required class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 transition-all text-white placeholder-slate-500">
+              <button type="submit" class="bg-teal-400 hover:bg-teal-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-sm transition-all flex items-center gap-1.5 shadow-md shadow-teal-400/10 hover:shadow-teal-400/20">
+                <i class="fa-solid fa-plus text-xs"></i> Add
+              </button>
+            </form>
+
+            <!-- Active List of Members -->
+            <div class="mt-4">
+              <div class="text-xs text-slate-400 mb-2 font-medium">Group Members:</div>
+              <div id="qs-members-list" class="flex flex-wrap gap-2 min-h-[40px] items-center text-slate-500 text-xs italic">
+                No members added yet. Add a few names to begin.
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Add Bill Line Items -->
+          <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
+            <h3 class="text-md font-bold uppercase tracking-wider text-indigo-400 mb-3 flex items-center gap-2">
+              <span class="h-6 w-6 rounded-full bg-indigo-400/10 text-indigo-400 flex items-center justify-center text-xs">2</span>
+              Add Bill Items
+            </h3>
+            
+            <form id="qs-item-form" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Category / Item Name</label>
+                  <input type="text" id="qs-item-name" placeholder="e.g. Food, Drinks, Tax" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400 transition-all text-white placeholder-slate-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Amount (₹)</label>
+                  <div class="relative">
+                    <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold">₹</span>
+                    <input type="number" id="qs-item-amount" min="1" step="any" placeholder="0" required class="w-full bg-slate-900 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400 transition-all text-white placeholder-slate-500">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Multi-select Checklist of Members -->
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wide">Splitting Participants</label>
+                  <div class="flex gap-2 text-xs">
+                    <button type="button" onclick="quickSplitToggleAllParticipants(true)" class="text-teal-400 hover:text-teal-300 font-medium">Select All</button>
+                    <span class="text-white/10">|</span>
+                    <button type="button" onclick="quickSplitToggleAllParticipants(false)" class="text-slate-400 hover:text-slate-300 font-medium">Clear All</button>
+                  </div>
+                </div>
+
+                <div id="qs-participants-container" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-950/40 p-3 rounded-xl border border-white/5 max-h-[140px] overflow-y-auto">
+                  <div class="text-xs text-slate-500 italic col-span-full py-1 text-center">Add group members above first to select them.</div>
+                </div>
+              </div>
+
+              <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/20">
+                <i class="fa-solid fa-plus text-xs"></i> Add Item to Bill
+              </button>
+            </form>
+          </div>
+
+          <!-- Active Bill Items Log -->
+          <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
+            <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3">
+              <h3 class="font-bold text-slate-200">Current Bill breakdown</h3>
+              <span id="qs-total-bill" class="text-lg font-extrabold text-teal-400">Total: ₹0.00</span>
+            </div>
+            
+            <div id="qs-bill-items-list" class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+              <div class="text-sm text-slate-500 italic text-center py-6">No items added to the bill yet.</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Side: Real-time Settle Breakdown Output -->
+        <div class="lg:col-span-5">
+          <div class="sticky top-20 glass-card rounded-2xl p-6 border border-white/5 shadow-2xl bg-gradient-to-br from-slate-900/60 to-slate-950/60 glow-primary">
+            <h3 class="text-lg font-bold brand-font text-slate-200 mb-4 border-b border-white/10 pb-3 flex items-center gap-2">
+              <i class="fa-solid fa-calculator text-indigo-400"></i> Individual Shares
+            </h3>
+            
+            <div id="qs-shares-output" class="space-y-3">
+              <div class="text-center py-12">
+                <div class="text-slate-500 text-sm">Waiting for members & bill items...</div>
+                <div class="text-xs text-slate-600 mt-1 max-w-[280px] mx-auto">Add at least one group member and a bill item to calculate the final splits.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW B: TRIP / OUTING (ONLINE MODE)       -->
+    <!-- ========================================== -->
+    <div id="view-trip-mode" class="hidden animate-fade-in space-y-6">
+      
+      <!-- Scenario 1: Onboarding Panel (No Active Trip in Hash) -->
+      <div id="trip-onboarding" class="max-w-2xl mx-auto py-10 space-y-8 animate-slide-up">
+        
+        <!-- Header Hero -->
+        <div class="text-center space-y-2">
+          <span class="px-3 py-1 text-xs rounded-full bg-teal-400/10 text-teal-400 font-semibold uppercase tracking-wider border border-teal-400/20">Trip / Outing Mode</span>
+          <h2 class="text-3xl sm:text-4xl font-extrabold leading-tight tracking-tight mt-3">Split Easy. Enjoy hard.</h2>
+          <p class="text-slate-400 max-w-lg mx-auto text-sm sm:text-base">Plan multi-day trips with friends. Add expenses, track who owes what, and settle balances dynamically with real-time updates.</p>
+        </div>
+
+        <!-- Create & Join Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Card A: Create Trip -->
+          <div class="glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col justify-between">
+            <div>
+              <div class="h-11 w-11 rounded-xl bg-teal-400/10 text-teal-400 flex items-center justify-center text-lg mb-4 border border-teal-400/20">
+                <i class="fa-solid fa-plane"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-200">Plan a new Trip</h3>
+              <p class="text-xs text-slate-400 mt-1.5 mb-5">Create a group session, invite friends via link, and start splitting logs.</p>
+            </div>
+            
+            <form id="trip-create-form" class="space-y-3">
+              <input type="text" id="trip-create-name" placeholder="Trip Name (e.g. Goa Outing)" required class="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-teal-400 text-white placeholder-slate-500">
+              <input type="text" id="trip-create-host" placeholder="Your Name" required class="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-teal-400 text-white placeholder-slate-500">
+              <button type="submit" class="w-full bg-teal-400 hover:bg-teal-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md shadow-teal-400/10">
+                Create Session <i class="fa-solid fa-arrow-right text-[10px]"></i>
+              </button>
+            </form>
+          </div>
+
+          <!-- Card B: Join Existing Trip -->
+          <div class="glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col justify-between">
+            <div>
+              <div class="h-11 w-11 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg mb-4 border border-indigo-500/20">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-200">Join via Code</h3>
+              <p class="text-xs text-slate-400 mt-1.5 mb-5">Enter a hash code shared by your friend to join their active session.</p>
+            </div>
+
+            <form id="trip-join-form" class="space-y-3">
+              <input type="text" id="trip-join-code" placeholder="Trip Code (e.g. TRIP-1234)" required class="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-400 text-white placeholder-slate-500 uppercase">
+              <input type="text" id="trip-join-name" placeholder="Your Name" required class="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-400 text-white placeholder-slate-500">
+              <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10">
+                Join Trip <i class="fa-solid fa-right-to-bracket text-[10px]"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Scenario 2: Active Dashboard (URL Has Hash) -->
+      <div id="trip-dashboard" class="hidden animate-fade-in space-y-6">
+        
+        <!-- Dashboard Header Bar -->
+        <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 id="dashboard-trip-name" class="text-xl sm:text-2xl font-extrabold text-white">Loading Trip...</h2>
+              <span id="trip-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-teal-400/10 text-teal-400 border border-teal-400/20 uppercase tracking-wide">Live Syncing</span>
+            </div>
+            <p id="dashboard-trip-info" class="text-xs text-slate-400">Host: ... | Expires: ...</p>
+          </div>
+
+          <!-- Share Connection Code -->
+          <div class="flex items-center gap-2 bg-slate-950/80 border border-white/10 px-3 py-2 rounded-xl text-sm max-w-full overflow-hidden">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">Invite Link:</span>
+            <span id="invite-code-span" class="font-mono text-teal-400 text-xs font-bold truncate">spliteasy.in/trip#...</span>
+            <button onclick="copyInviteLink()" class="h-7 w-7 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-all shrink-0 ml-1" title="Copy Invite Link">
+              <i class="fa-regular fa-copy text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Dashboard Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- Left Column (4 Cols): Members & Outstanding Balances -->
+          <div class="lg:col-span-4 space-y-6">
+            
+            <!-- Trip Members List -->
+            <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-200 text-sm uppercase tracking-wider flex items-center gap-1.5">
+                  <i class="fa-solid fa-users text-teal-400"></i> Members (<span id="trip-member-count">0</span>)
+                </h3>
+                <!-- Quick add member button toggle -->
+                <button onclick="toggleQuickAddMember()" class="text-xs text-teal-400 hover:text-teal-300 font-semibold flex items-center gap-1">
+                  <i class="fa-solid fa-plus"></i> Add
+                </button>
+              </div>
+
+              <!-- Inline Quick Add Form -->
+              <div id="quick-add-member-container" class="hidden mb-3.5 transition-all">
+                <form id="trip-add-member-form" class="flex gap-2">
+                  <input type="text" id="trip-member-name-input" placeholder="New member name" required class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-teal-400">
+                  <button type="submit" class="bg-teal-400 hover:bg-teal-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">Add</button>
+                </form>
+              </div>
+
+              <!-- List of members with custom dynamic balances -->
+              <div id="trip-members-list" class="space-y-2">
+                <!-- Template populated dynamically -->
+                <div class="text-xs text-slate-500 italic py-2 text-center">Loading members...</div>
+              </div>
+            </div>
+
+            <!-- Stats & My Standings -->
+            <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl bg-gradient-to-br from-slate-900/40 to-slate-950/40">
+              <h3 class="font-bold text-slate-200 text-sm uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-pie text-indigo-400"></i> Trip Summary
+              </h3>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-950/50 border border-white/5 p-3.5 rounded-xl">
+                  <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Spent</div>
+                  <div id="trip-stat-total" class="text-md sm:text-lg font-extrabold text-indigo-400 mt-1">₹0.00</div>
+                </div>
+                <div class="bg-slate-950/50 border border-white/5 p-3.5 rounded-xl">
+                  <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">My Share</div>
+                  <div id="trip-stat-my-share" class="text-md sm:text-lg font-extrabold text-white mt-1">₹0.00</div>
+                </div>
+              </div>
+
+              <!-- Current User Role Settings (Who is browsing) -->
+              <div class="mt-4 border-t border-white/10 pt-4">
+                <label class="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Simulate User View</label>
+                <select id="select-active-member" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400">
+                  <!-- Dynamic options -->
+                </select>
+                <span class="block text-[9px] text-slate-500 mt-1">Select your name to see customized settlement controls for your balance.</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Middle Column (8 Cols): Add Expense & Settlement & History Log -->
+          <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Add Expense Form -->
+            <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
+              <h3 class="font-bold text-slate-200 text-sm uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                <i class="fa-solid fa-receipt text-teal-400"></i> Log a Trip Expense
+              </h3>
+              
+              <form id="trip-expense-form" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Expense description</label>
+                    <input type="text" id="trip-expense-desc" placeholder="e.g. Fuel, Lunch, Villa Rental" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 text-white placeholder-slate-500">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Amount (₹)</label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold">₹</span>
+                      <input type="number" id="trip-expense-amount" min="1" step="any" placeholder="0" required class="w-full bg-slate-900 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 text-white placeholder-slate-500">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <!-- Paid By Selector -->
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Paid By</label>
+                    <select id="trip-expense-payer" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 text-white">
+                      <!-- Dynamic members list -->
+                    </select>
+                  </div>
+                  <!-- Category Selection -->
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Category</label>
+                    <div class="relative">
+                      <select id="trip-expense-category" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 text-white appearance-none">
+                        <option value="Food">🍽️ Food</option>
+                        <option value="Drinks">🍹 Drinks</option>
+                        <option value="Travel">🚗 Travel</option>
+                        <option value="Lodging">🏨 Lodging</option>
+                        <option value="Activity">🎢 Activity</option>
+                        <option value="Other">📦 Other</option>
+                      </select>
+                      <span class="absolute right-4 top-3 pointer-events-none text-xs text-slate-400"><i class="fa-solid fa-chevron-down"></i></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Custom Split multi-select checklist -->
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wide">Participating Members</label>
+                    <div class="flex gap-2 text-xs">
+                      <button type="button" onclick="tripToggleAllParticipants(true)" class="text-teal-400 hover:text-teal-300 font-medium">Select All</button>
+                      <span class="text-white/10">|</span>
+                      <button type="button" onclick="tripToggleAllParticipants(false)" class="text-slate-400 hover:text-slate-300 font-medium">Clear All</button>
+                    </div>
+                  </div>
+
+                  <div id="trip-participants-container" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-950/40 p-3 rounded-xl border border-white/5 max-h-[140px] overflow-y-auto">
+                    <!-- Dynamic Checklist -->
+                    <div class="text-xs text-slate-500 italic col-span-full py-1 text-center font-medium">Loading members list...</div>
+                  </div>
+                </div>
+
+                <button type="submit" class="w-full bg-teal-400 hover:bg-teal-500 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-md shadow-teal-400/10">
+                  <i class="fa-solid fa-plus text-xs"></i> Log Expense to Trip
+                </button>
+              </form>
+            </div>
+
+            <!-- Settle Up Suggestions, Pending confirmations, History -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <!-- Settle Up Transfers (Greedy Output) -->
+              <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl flex flex-col justify-between min-h-[300px]">
+                <div>
+                  <h3 class="font-bold text-slate-200 text-sm uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                    <i class="fa-solid fa-money-bill-transfer text-teal-400"></i> Suggested Settlement
+                  </h3>
+                  <div id="trip-transfers-container" class="space-y-3">
+                    <!-- Greedy output will populate here -->
+                    <div class="text-xs text-slate-500 italic py-6 text-center">Everyone is fully settled! No payments needed.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pending Confirmation Requests (Trust Flow) -->
+              <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl min-h-[300px] flex flex-col justify-between">
+                <div>
+                  <h3 class="font-bold text-slate-200 text-sm uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                    <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> Pending Receipt Approvals
+                  </h3>
+                  <div id="trip-pending-container" class="space-y-3">
+                    <!-- Pending settlements show here -->
+                    <div class="text-xs text-slate-500 italic py-6 text-center">No pending settlements.</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Expenses & Settlements History Feed -->
+            <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
+              <h3 class="font-bold text-slate-200 text-sm uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                <i class="fa-solid fa-history text-indigo-400"></i> Expense & Settlement History
+              </h3>
+              
+              <div id="trip-history-list" class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                <!-- Log feed of expenses -->
+                <div class="text-sm text-slate-500 italic text-center py-8">No expenses logged yet. Add one above.</div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PAY VIA UPI (SIMULATOR FOR DEBTORS)  -->
+  <!-- ========================================== -->
+  <div id="upi-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center px-4">
+    <div class="glass-card rounded-2xl border border-white/10 shadow-2xl max-w-sm w-full p-6 animate-scale-in text-center space-y-5 bg-slate-900">
+      
+      <div class="flex justify-between items-center border-b border-white/10 pb-3 text-left">
+        <h3 class="text-md font-bold brand-font text-white flex items-center gap-1.5">
+          <i class="fa-solid fa-mobile-screen-button text-teal-400"></i> Pay via UPI
+        </h3>
+        <button onclick="closeUpiModal()" class="h-7 w-7 rounded hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- UPI QR Code Simulator -->
+      <div class="bg-white p-4 rounded-2xl inline-block shadow-lg border border-slate-200">
+        <!-- SVG Mock QR Code -->
+        <svg class="h-40 w-40 mx-auto text-slate-950" viewBox="0 0 100 100" fill="currentColor">
+          <path d="M5,5 h30 v30 h-30 z M15,15 h10 v10 h-10 z M65,5 h30 v30 h-30 z M75,15 h10 v10 h-10 z M5,65 h30 v30 h-30 z M15,75 h10 v10 h-10 z" />
+          <path d="M45,5 h10 v10 h-10 z M45,25 h10 v10 h-10 z M45,45 h10 v10 h-10 z M5,45 h10 v10 h-10 z M25,45 h10 v10 h-10 z M65,45 h30 v10 h-30 z M85,55 h10 v15 h-10 z M65,75 h10 v10 h-10 z M85,75 h10 v20 h-10 z M45,65 h15 v10 h-15 z M55,85 h10 v10 h-10 z M40,85 h10 v10 h-10 z" />
+          <!-- Small UPI logo/design inside QR code -->
+          <circle cx="50" cy="50" r="10" fill="#0c4a6e" />
+          <polygon points="47,48 53,48 50,54" fill="#2dd4bf" />
+        </svg>
+      </div>
+
+      <!-- Payment info details -->
+      <div class="space-y-1.5">
+        <div class="text-xs text-slate-400">Scan to settle the balance with</div>
+        <div id="upi-creditor-name" class="text-lg font-bold text-white">Alice</div>
+        <div id="upi-amount" class="text-2xl font-extrabold text-teal-400">₹0.00</div>
+      </div>
+
+      <div class="bg-slate-950/60 p-3 rounded-xl border border-white/5 space-y-1">
+        <div class="text-[10px] text-slate-500 uppercase font-semibold">Simulated VPA</div>
+        <div id="upi-vpa" class="font-mono text-xs text-indigo-300">alice@upi</div>
+      </div>
+
+      <p class="text-[10px] text-slate-500 leading-normal">
+        Once you send the funds through your favorite UPI application (GPay, PhonePe, Paytm), click the button below to log your transaction. The creditor will see it on their screen instantly and confirm receipt.
+      </p>
+
+      <button id="btn-upi-paid" class="w-full bg-teal-400 hover:bg-teal-500 text-slate-950 font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-teal-400/10">
+        I Have Paid Owed Amount
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: IDENTITY SELECTION ("WHO ARE YOU?") -->
+  <!-- ========================================== -->
+  <div id="identity-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
+    <div class="glass-card rounded-2xl border border-white/10 shadow-2xl max-w-sm w-full p-6 animate-scale-in space-y-5 bg-slate-900">
+      <div class="text-center space-y-2">
+        <div class="h-12 w-12 rounded-full bg-teal-400/10 text-teal-400 flex items-center justify-center text-xl mx-auto border border-teal-400/20">
+          <i class="fa-solid fa-user-check"></i>
+        </div>
+        <h3 class="text-lg font-bold brand-font text-white">Who are you?</h3>
+        <p class="text-xs text-slate-400">Select your name to see personalized settlement logs, pay debts, and confirm received payments.</p>
+      </div>
+
+      <!-- Member Buttons List -->
+      <div id="identity-members-list" class="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+        <!-- Populated dynamically from JavaScript -->
+      </div>
+
+      <div class="border-t border-white/10 pt-4 text-center">
+        <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2">Not on the list? Join Trip:</div>
+        <form id="identity-join-form" class="flex gap-2">
+          <input type="text" id="identity-join-name" placeholder="Enter your name" required class="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-400">
+          <button type="submit" class="bg-teal-400 hover:bg-teal-500 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md shadow-teal-400/10">
+            Join
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript File -->
+  <script src="app.js"></script>
+</body>
+</html>

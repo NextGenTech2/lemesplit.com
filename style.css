@@ -1,0 +1,234 @@
+/* SplitEasy Premium Design System & Animations */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-gradient-start: #0f172a; /* Slate 900 */
+  --bg-gradient-end: #020617;   /* Slate 950 */
+  --color-primary: #818cf8;     /* Indigo 400 */
+  --color-primary-glow: rgba(129, 140, 248, 0.15);
+  --color-secondary: #2dd4bf;   /* Teal 400 */
+  --color-secondary-glow: rgba(45, 212, 191, 0.15);
+  --color-accent: #f43f5e;      /* Rose 500 */
+  --color-accent-glow: rgba(244, 63, 94, 0.15);
+  
+  --card-bg: rgba(30, 41, 59, 0.5); /* Slate 800 with opacity */
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-hover-border: rgba(255, 255, 255, 0.15);
+  
+  --text-main: #f1f5f9;         /* Slate 100 */
+  --text-muted: #94a3b8;        /* Slate 400 */
+  
+  font-family: 'Inter', sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+  min-height: 100vh;
+  color: var(--text-main);
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, .brand-font {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Glassmorphism card utility */
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: var(--card-hover-border);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Glow effects */
+.glow-primary {
+  box-shadow: 0 0 20px var(--color-primary-glow);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 20px var(--color-secondary-glow);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px var(--color-accent-glow);
+}
+
+/* Active tab style */
+.tab-active {
+  background: linear-gradient(102.3deg, var(--color-primary) 5.9%, var(--color-secondary) 95.8%);
+  color: #020617 !important;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(45, 212, 191, 0.3);
+}
+
+/* Custom Checkbox styles */
+.custom-checkbox {
+  appearance: none;
+  background-color: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox::before {
+  content: "";
+  width: 0.65rem;
+  height: 0.65rem;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--color-secondary);
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.custom-checkbox:checked {
+  border-color: var(--color-secondary);
+  background-color: var(--color-secondary-glow);
+}
+
+.custom-checkbox:checked::before {
+  transform: scale(1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Categories badge colors */
+.badge-food { background: rgba(249, 115, 22, 0.15); color: #fdba74; border: 1px solid rgba(249, 115, 22, 0.3); }
+.badge-drinks { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
+.badge-travel { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+.badge-lodging { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-activity { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
+.badge-other { background: rgba(107, 114, 128, 0.15); color: #d1d5db; border: 1px solid rgba(107, 114, 128, 0.3); }
+.badge-settlement { background: rgba(45, 212, 191, 0.15); color: #99f6e4; border: 1px solid rgba(45, 212, 191, 0.3); }
+
+/* Category input button selection */
+.category-btn {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.3);
+  transition: all 0.2s ease;
+}
+.category-btn.active {
+  border-color: var(--color-secondary);
+  background: var(--color-secondary-glow);
+  color: var(--color-secondary);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-gradient-end);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Soft pulse for outstanding settlement notifications */
+.pulse-glow {
+  animation: pulse-glow 2s infinite alternate;
+}
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 10px rgba(45, 212, 191, 0.2); }
+  100% { box-shadow: 0 0 20px rgba(45, 212, 191, 0.6); }
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top: 3px solid var(--color-secondary);
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Toast Notification styling */
+#toast-container {
+  z-index: 9999;
+}
+.toast {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  color: var(--text-main);
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  animation: slideInRight 0.3s ease-out forwards;
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Utility to override defaults */
+.text-gradient {
+  background: linear-gradient(102.3deg, var(--color-primary) 5.9%, var(--color-secondary) 95.8%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.text-gradient-rose {
+  background: linear-gradient(102.3deg, #f43f5e 5.9%, #ec4899 95.8%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
