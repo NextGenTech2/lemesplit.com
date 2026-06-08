@@ -136,10 +136,17 @@ function switchView(mode) {
 function setupEventListeners() {
   // Tabs
   document.getElementById('tab-quick-split').addEventListener('click', () => {
-    window.location.hash = '';
+    if (window.location.hash) {
+      window.location.hash = '';
+    } else {
+      handleRouting();
+    }
   });
 
   document.getElementById('tab-trip-mode').addEventListener('click', () => {
+    document.getElementById('tab-quick-split').classList.remove('tab-active');
+    document.getElementById('tab-trip-mode').classList.add('tab-active');
+    
     if (activeTripId) {
       switchView('trip');
     } else {
@@ -603,6 +610,17 @@ function removeQsItem(index) {
 function quickSplitToggleAllParticipants(checked) {
   const boxes = document.querySelectorAll('#qs-participants-container input[type="checkbox"]');
   boxes.forEach(cb => cb.checked = checked);
+}
+
+function clearQuickSplit() {
+  if (confirm('Are you sure you want to clear all Quick Split data and start fresh? This action cannot be undone.')) {
+    qsMembers = [];
+    qsItems = [];
+    localStorage.removeItem('spliteasy_qs_members');
+    localStorage.removeItem('spliteasy_qs_items');
+    renderQuickSplit();
+    showToast('Quick Split data cleared.', 'success');
+  }
 }
 
 // ==========================================
