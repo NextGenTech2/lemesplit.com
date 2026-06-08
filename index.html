@@ -63,9 +63,14 @@
     <div id="view-quick-split" class="animate-fade-in space-y-6">
       
       <!-- Top banner description -->
-      <div class="text-center sm:text-left max-w-xl">
-        <h2 class="text-2xl sm:text-3xl font-extrabold text-gradient">Instant Quick Split</h2>
-        <p class="text-sm text-slate-400 mt-1">Settle restaurant bills or grocery bills in 2 minutes. Entirely offline, no setup required.</p>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="text-center sm:text-left max-w-xl">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-gradient">Instant Quick Split</h2>
+          <p class="text-sm text-slate-400 mt-1">Settle restaurant bills or grocery bills in 2 minutes. Entirely offline, no setup required.</p>
+        </div>
+        <button onclick="clearQuickSplit()" class="px-4 py-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 border border-rose-500/20 shrink-0">
+          <i class="fa-solid fa-rotate-right"></i> Start Fresh
+        </button>
       </div>
 
       <!-- Quick Split Board -->
