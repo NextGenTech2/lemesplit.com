@@ -13,7 +13,8 @@
           colors: {
             slate: {
               950: '#020617',
-            }
+            },
+            acidgreen: '#ccff00'
           }
         }
       }
@@ -35,11 +36,20 @@
   <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/80 border-b border-white/10 px-4 py-3">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
       <!-- Brand Logo -->
-      <a href="#" onclick="window.location.hash=''; window.location.reload();" class="flex items-center gap-2 hover:opacity-85 transition-all">
-        <div class="h-10 w-10 rounded-xl bg-gradient-to-r from-indigo-500 to-teal-400 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-indigo-500/20">
-          <i class="fa-solid fa-receipt"></i>
+      <a href="#" onclick="window.location.hash=''; window.location.reload();" class="flex items-center gap-2.5 hover:opacity-85 transition-all">
+        <div class="h-10 w-10 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center shadow-lg shadow-acidgreen/5 transition-all">
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Tilted slash -->
+            <path d="M15.5 3.5L8.5 20.5" stroke="#ccff00" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Sharp S top hook -->
+            <path d="M8 7H16V11H8V7Z" fill="#ccff00" fill-opacity="0.2"/>
+            <path d="M8 7H16V11H11" stroke="#ccff00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Sharp S bottom hook -->
+            <path d="M8 13H16V17H8V13Z" fill="#ccff00" fill-opacity="0.2"/>
+            <path d="M13 13H8V17H16" stroke="#ccff00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-        <span class="text-2xl font-bold brand-font tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">Split<span class="text-teal-400">Easy</span></span>
+        <span class="text-2xl font-bold brand-font tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">Split<span class="text-acidgreen">Easy</span></span>
       </a>
 
       <!-- Mode Switcher Tabs -->
@@ -50,6 +60,16 @@
         <button id="tab-trip-mode" class="flex-1 sm:flex-initial px-4 py-2 text-sm rounded-lg text-slate-300 hover:text-white transition-all flex items-center justify-center gap-2">
           <i class="fa-solid fa-campground text-xs"></i> Trip Mode
         </button>
+      </div>
+
+      <!-- Currency Selector -->
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-center mt-1 sm:mt-0">
+        <select id="currency-selector" class="w-full sm:w-auto bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white focus:outline-none focus:border-acidgreen transition-all cursor-pointer text-center">
+          <option value="USD">$ USD</option>
+          <option value="INR">₹ INR</option>
+          <option value="EUR">€ EUR</option>
+          <option value="GBP">£ GBP</option>
+        </select>
       </div>
     </div>
   </header>
@@ -63,13 +83,13 @@
     <div id="view-quick-split" class="animate-fade-in space-y-6">
       
       <!-- Top banner description -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="text-center sm:text-left max-w-xl">
+      <div class="flex justify-between items-start gap-4">
+        <div class="max-w-xl">
           <h2 class="text-2xl sm:text-3xl font-extrabold text-gradient">Instant Quick Split</h2>
           <p class="text-sm text-slate-400 mt-1">Settle restaurant bills or grocery bills in 2 minutes. Entirely offline, no setup required.</p>
         </div>
-        <button onclick="clearQuickSplit()" class="px-4 py-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 border border-rose-500/20 shrink-0">
-          <i class="fa-solid fa-rotate-right"></i> Start Fresh
+        <button onclick="clearQuickSplit()" class="px-3 py-1.5 bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 border border-white/10 shrink-0 shadow-sm">
+          <i class="fa-solid fa-arrow-rotate-left text-[10px]"></i> Reset
         </button>
       </div>
 
@@ -82,7 +102,6 @@
           <!-- Step 1: Manage Members -->
           <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
             <h3 class="text-md font-bold uppercase tracking-wider text-teal-400 mb-3 flex items-center gap-2">
-              <span class="h-6 w-6 rounded-full bg-teal-400/10 text-teal-400 flex items-center justify-center text-xs">1</span>
               Add Group Members
             </h3>
             
@@ -105,7 +124,6 @@
           <!-- Step 2: Add Bill Line Items -->
           <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
             <h3 class="text-md font-bold uppercase tracking-wider text-indigo-400 mb-3 flex items-center gap-2">
-              <span class="h-6 w-6 rounded-full bg-indigo-400/10 text-indigo-400 flex items-center justify-center text-xs">2</span>
               Add Bill Items
             </h3>
             
@@ -116,12 +134,21 @@
                   <input type="text" id="qs-item-name" placeholder="e.g. Food, Drinks, Tax" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400 transition-all text-white placeholder-slate-500">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Amount (₹)</label>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Amount (<span class="sys-currency">₹</span>)</label>
                   <div class="relative">
-                    <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold">₹</span>
+                    <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold sys-currency">₹</span>
                     <input type="number" id="qs-item-amount" min="1" step="any" placeholder="0" required class="w-full bg-slate-900 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400 transition-all text-white placeholder-slate-500">
                   </div>
                 </div>
+              </div>
+
+              <!-- Tip Slider -->
+              <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                  <label class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Tip</label>
+                  <span id="qs-tip-display" class="text-xs font-bold text-acidgreen">5% &middot; <span class="sys-currency">₹</span>0</span>
+                </div>
+                <input type="range" id="qs-item-tip" min="0" max="30" value="5" class="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-[#ccff00] focus:outline-none">
               </div>
 
               <!-- Multi-select Checklist of Members -->
@@ -150,7 +177,7 @@
           <div class="glass-card rounded-2xl p-5 border border-white/5 shadow-xl">
             <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3">
               <h3 class="font-bold text-slate-200">Current Bill breakdown</h3>
-              <span id="qs-total-bill" class="text-lg font-extrabold text-teal-400">Total: ₹0.00</span>
+              <span id="qs-total-bill" class="text-lg font-extrabold text-teal-400">Total: <span class="sys-currency">₹</span>0.00</span>
             </div>
             
             <div id="qs-bill-items-list" class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
@@ -302,11 +329,11 @@
               <div class="grid grid-cols-2 gap-4">
                 <div class="bg-slate-950/50 border border-white/5 p-3.5 rounded-xl">
                   <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Spent</div>
-                  <div id="trip-stat-total" class="text-md sm:text-lg font-extrabold text-indigo-400 mt-1">₹0.00</div>
+                  <div id="trip-stat-total" class="text-md sm:text-lg font-extrabold text-indigo-400 mt-1"><span class="sys-currency">₹</span>0.00</div>
                 </div>
                 <div class="bg-slate-950/50 border border-white/5 p-3.5 rounded-xl">
                   <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">My Share</div>
-                  <div id="trip-stat-my-share" class="text-md sm:text-lg font-extrabold text-white mt-1">₹0.00</div>
+                  <div id="trip-stat-my-share" class="text-md sm:text-lg font-extrabold text-white mt-1"><span class="sys-currency">₹</span>0.00</div>
                 </div>
               </div>
 
@@ -338,9 +365,9 @@
                     <input type="text" id="trip-expense-desc" placeholder="e.g. Fuel, Lunch, Villa Rental" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 text-white placeholder-slate-500">
                   </div>
                   <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Amount (₹)</label>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Amount (<span class="sys-currency">₹</span>)</label>
                     <div class="relative">
-                      <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold">₹</span>
+                      <span class="absolute left-4 top-2.5 text-slate-500 text-sm font-semibold sys-currency">₹</span>
                       <input type="number" id="trip-expense-amount" min="1" step="any" placeholder="0" required class="w-full bg-slate-900 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 text-white placeholder-slate-500">
                     </div>
                   </div>
@@ -477,7 +504,7 @@
       <div class="space-y-1.5">
         <div class="text-xs text-slate-400">Scan to settle the balance with</div>
         <div id="upi-creditor-name" class="text-lg font-bold text-white">Alice</div>
-        <div id="upi-amount" class="text-2xl font-extrabold text-teal-400">₹0.00</div>
+        <div id="upi-amount" class="text-2xl font-extrabold text-teal-400"><span class="sys-currency">₹</span>0.00</div>
       </div>
 
       <div class="bg-slate-950/60 p-3 rounded-xl border border-white/5 space-y-1">

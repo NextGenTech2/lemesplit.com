@@ -10,6 +10,8 @@
   --color-secondary-glow: rgba(45, 212, 191, 0.15);
   --color-accent: #f43f5e;      /* Rose 500 */
   --color-accent-glow: rgba(244, 63, 94, 0.15);
+  --color-acid-green: #ccff00;
+  --color-acid-green-glow: rgba(204, 255, 0, 0.15);
   
   --card-bg: rgba(30, 41, 59, 0.5); /* Slate 800 with opacity */
   --card-border: rgba(255, 255, 255, 0.08);
@@ -231,4 +233,61 @@ h1, h2, h3, h4, .brand-font {
   background: linear-gradient(102.3deg, #f43f5e 5.9%, #ec4899 95.8%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Premium Acid Green Slider styling */
+input[type="range"]#qs-item-tip {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+}
+
+input[type="range"]#qs-item-tip::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-acid-green, #ccff00);
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--color-acid-green-glow, rgba(204, 255, 0, 0.4));
+  transition: all 0.2s ease;
+}
+
+input[type="range"]#qs-item-tip::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 18px var(--color-acid-green, #ccff00);
+}
+
+/* Messaging-app participant toggles */
+.qs-participant-label {
+  position: relative;
+  user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.qs-participant-label:has(.qs-participant-checkbox:checked) {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 10px rgba(204, 255, 0, 0.05);
+}
+
+.qs-participant-checkbox:not(:checked) + .avatar-indicator {
+  background: #334155 !important;
+  color: #64748b !important;
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.qs-participant-checkbox:not(:checked) ~ .name-label {
+  color: #475569 !important;
+  opacity: 0.6;
+}
+
+.qs-participant-checkbox:checked ~ .name-label {
+  color: #f1f5f9 !important;
 }

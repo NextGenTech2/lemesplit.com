@@ -10,6 +10,44 @@ let supabaseClient = null;
 const supabaseUrl = 'https://dkzaqjvtjromwyebrkbo.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRremFxanZ0anJvbXd5ZWJya2JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Mjc0MzEsImV4cCI6MjA5NjMwMzQzMX0.FpCCycywS5diSuZxTaPp4uqFpEBrY4blFgHbMbdaX1Y';
 
+// Currency State Configuration
+const CURRENCIES = {
+  'INR': { symbol: '₹', locale: 'en-IN' },
+  'USD': { symbol: '$', locale: 'en-US' },
+  'EUR': { symbol: '€', locale: 'de-DE' },
+  'GBP': { symbol: '£', locale: 'en-GB' }
+};
+
+let activeCurrency = localStorage.getItem('spliteasy_currency');
+if (!activeCurrency || !CURRENCIES[activeCurrency]) {
+  if (navigator.language && navigator.language.includes('US')) {
+    activeCurrency = 'USD';
+  } else {
+    activeCurrency = 'INR';
+  }
+  localStorage.setItem('spliteasy_currency', activeCurrency);
+}
+
+function formatMoney(amount, noFractions = false) {
+  const c = CURRENCIES[activeCurrency];
+  return new Intl.NumberFormat(c.locale, {
+    style: 'currency',
+    currency: activeCurrency,
+    minimumFractionDigits: noFractions ? 0 : 2,
+    maximumFractionDigits: noFractions ? 0 : 2
+  }).format(amount);
+}
+
+function updateCurrencyUI() {
+  const c = CURRENCIES[activeCurrency];
+  document.querySelectorAll('.sys-currency').forEach(el => {
+    el.textContent = c.symbol;
+  });
+  
+  const selector = document.getElementById('currency-selector');
+  if (selector) selector.value = activeCurrency;
+}
+
 // Device Identifier to prevent session hijacking / claiming other profiles
 let deviceId = localStorage.getItem('spliteasy_device_id');
 if (!deviceId) {
@@ -40,10 +78,31 @@ const CATEGORY_ICONS = {
   settlement: '💸'
 };
 
+/**
+ * Dynamic avatar color generation based on user's name
+ */
+function getMemberColors(name) {
+  const colors = [
+    { bg: 'bg-[#ccff00]', text: 'text-slate-900', border: 'border-[#ccff00]/30', pillBg: 'bg-[#ccff00]/10' }, // Acid green
+    { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-500/30', pillBg: 'bg-blue-500/10' }, // Blue
+    { bg: 'bg-indigo-500', text: 'text-white', border: 'border-indigo-500/30', pillBg: 'bg-indigo-500/10' }, // Indigo
+    { bg: 'bg-purple-500', text: 'text-white', border: 'border-purple-500/30', pillBg: 'bg-purple-500/10' }, // Purple
+    { bg: 'bg-pink-500', text: 'text-white', border: 'border-pink-500/30', pillBg: 'bg-pink-500/10' }, // Pink
+    { bg: 'bg-teal-400', text: 'text-slate-950', border: 'border-teal-400/30', pillBg: 'bg-teal-400/10' } // Teal
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+}
+
 // ==========================================
 // 2. INITIALIZATION & ROUTING
 // ==========================================
 window.addEventListener('DOMContentLoaded', () => {
+  updateCurrencyUI();
   initSupabase();
   setupEventListeners();
   handleRouting();
@@ -155,7 +214,22 @@ function setupEventListeners() {
     }
   });
 
-
+  // Currency Selector
+  const currencySelector = document.getElementById('currency-selector');
+  if (currencySelector) {
+    currencySelector.addEventListener('change', (e) => {
+      activeCurrency = e.target.value;
+      localStorage.setItem('spliteasy_currency', activeCurrency);
+      updateCurrencyUI();
+      // Re-render currently active view to apply formatting
+      if (activeTripId) {
+        calculateBalancesAndRender();
+      } else {
+        renderQuickSplit();
+      }
+      updateTipDisplay();
+    });
+  }
 
   // Quick Split Forms
   document.getElementById('qs-member-form').addEventListener('submit', (e) => {
@@ -179,9 +253,13 @@ function setupEventListeners() {
     e.preventDefault();
     const nameInput = document.getElementById('qs-item-name');
     const amountInput = document.getElementById('qs-item-amount');
+    const tipInput = document.getElementById('qs-item-tip');
 
     const categoryName = nameInput.value.trim();
     const amount = parseFloat(amountInput.value);
+    const tipPercent = tipInput ? parseInt(tipInput.value) : 0;
+    const tipAmount = amount * (tipPercent / 100);
+    const totalAmount = amount + tipAmount;
 
     // Read checked participants
     const checkedBoxes = document.querySelectorAll('#qs-participants-container input[type="checkbox"]:checked');
@@ -195,7 +273,10 @@ function setupEventListeners() {
     const item = {
       id: 'qs_' + Date.now(),
       category: categoryName,
-      amount: amount,
+      baseAmount: amount,
+      tipPercent: tipPercent,
+      tipAmount: tipAmount,
+      amount: totalAmount,
       participants: participants
     };
 
@@ -204,9 +285,13 @@ function setupEventListeners() {
 
     nameInput.value = '';
     amountInput.value = '';
+    if (tipInput) {
+      tipInput.value = '5';
+      updateTipDisplay();
+    }
 
     renderQuickSplit();
-    showToast(`Added ${categoryName} (₹${amount.toFixed(2)}) to bill.`, 'success');
+    showToast(`Added ${categoryName} (${formatMoney(totalAmount)}) to bill.`, 'success');
   });
 
   // Trip Mode Forms
@@ -410,7 +495,7 @@ function setupEventListeners() {
       // Reset form fields
       document.getElementById('trip-expense-desc').value = '';
       document.getElementById('trip-expense-amount').value = '';
-      showToast(`Expense logged: ₹${amount.toFixed(2)} for ${desc}.`, 'success');
+      showToast(`Expense logged: ${formatMoney(amount)} for ${desc}.`, 'success');
     } catch (err) {
       console.error(err);
       showToast(err.message || 'Error logging expense.', 'error');
@@ -455,7 +540,7 @@ function setupEventListeners() {
       if (error) throw error;
 
       closeUpiModal();
-      showToast(`UPI payment of ₹${amount.toFixed(2)} marked as Paid. Waiting for confirmation.`, 'info');
+      showToast(`UPI payment of ${formatMoney(amount)} marked as Paid. Waiting for confirmation.`, 'info');
     } catch (err) {
       console.error(err);
       showToast('Error recording settlement.', 'error');
@@ -463,6 +548,31 @@ function setupEventListeners() {
       showLoading(false);
     }
   });
+
+  // Tip Slider listeners
+  const qsItemAmount = document.getElementById('qs-item-amount');
+  const qsItemTip = document.getElementById('qs-item-tip');
+  if (qsItemAmount && qsItemTip) {
+    qsItemAmount.addEventListener('input', updateTipDisplay);
+    qsItemTip.addEventListener('input', updateTipDisplay);
+    updateTipDisplay();
+  }
+}
+
+/**
+ * Updates the Tip displaying element based on active bill amount and tip percent
+ */
+function updateTipDisplay() {
+  const amountInput = document.getElementById('qs-item-amount');
+  const tipInput = document.getElementById('qs-item-tip');
+  const tipDisplay = document.getElementById('qs-tip-display');
+  if (!amountInput || !tipInput || !tipDisplay) return;
+
+  const amount = parseFloat(amountInput.value) || 0;
+  const tipPercent = parseInt(tipInput.value) || 0;
+  const tipAmount = amount * (tipPercent / 100);
+
+  tipDisplay.innerHTML = `${tipPercent}% &middot; ${formatMoney(Math.round(tipAmount), true)}`;
 }
 
 // ==========================================
@@ -479,26 +589,40 @@ function renderQuickSplit() {
   if (qsMembers.length === 0) {
     membersListDiv.innerHTML = '<span class="text-xs text-slate-500 italic py-1">No members added yet. Add a few names to begin.</span>';
   } else {
-    membersListDiv.innerHTML = qsMembers.map((name, idx) => `
-      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white font-medium shadow-sm animate-scale-in">
-        <span>${name}</span>
-        <button type="button" onclick="removeQsMember(${idx})" class="text-slate-400 hover:text-rose-400 transition-colors">
-          <i class="fa-solid fa-xmark text-[10px]"></i>
-        </button>
-      </span>
-    `).join('');
+    membersListDiv.innerHTML = qsMembers.map((name, idx) => {
+      const colors = getMemberColors(name);
+      const initial = name.charAt(0).toUpperCase();
+      return `
+        <span class="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full ${colors.pillBg} border ${colors.border} text-xs font-semibold text-white shadow-sm animate-scale-in">
+          <span class="h-6 w-6 rounded-full ${colors.bg} ${colors.text} flex items-center justify-center font-black text-[10px] select-none shrink-0 animate-scale-in">
+            ${initial}
+          </span>
+          <span>${name}</span>
+          <button type="button" onclick="removeQsMember(${idx})" class="text-slate-400 hover:text-rose-400 transition-colors ml-1" title="Remove ${name}">
+            <i class="fa-solid fa-xmark text-[10px]"></i>
+          </button>
+        </span>
+      `;
+    }).join('');
   }
 
   // 2. Splitting Participants Checklist
   if (qsMembers.length === 0) {
     partContainer.innerHTML = '<div class="text-xs text-slate-500 italic col-span-full py-1 text-center font-medium">Add group members above first to select them.</div>';
   } else {
-    partContainer.innerHTML = qsMembers.map(name => `
-      <label class="flex items-center gap-2.5 p-2 bg-slate-900/40 hover:bg-slate-900/80 rounded-lg cursor-pointer transition-colors border border-white/5">
-        <input type="checkbox" value="${name}" checked class="custom-checkbox">
-        <span class="text-xs font-semibold text-slate-200 select-none">${name}</span>
-      </label>
-    `).join('');
+    partContainer.innerHTML = qsMembers.map(name => {
+      const colors = getMemberColors(name);
+      const initial = name.charAt(0).toUpperCase();
+      return `
+        <label class="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all border border-white/5 bg-slate-900/30 hover:bg-slate-900/60 qs-participant-label">
+          <input type="checkbox" value="${name}" checked class="qs-participant-checkbox hidden">
+          <span class="h-6 w-6 rounded-full ${colors.bg} ${colors.text} flex items-center justify-center font-black text-xs select-none avatar-indicator shrink-0">
+            ${initial}
+          </span>
+          <span class="text-xs font-semibold text-slate-200 select-none name-label truncate">${name}</span>
+        </label>
+      `;
+    }).join('');
   }
 
   // 3. Bill items log list
@@ -508,19 +632,26 @@ function renderQuickSplit() {
   } else {
     itemsListDiv.innerHTML = qsItems.map((item, idx) => {
       totalBill += item.amount;
+      const tipPercent = item.tipPercent || 0;
+      const baseAmount = item.baseAmount || item.amount;
+
       return `
         <div class="flex items-center justify-between p-3.5 bg-slate-950/60 rounded-xl border border-white/5 shadow-sm animate-scale-in">
           <div class="space-y-1">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <span class="text-xs font-bold text-slate-300">${item.category}</span>
               <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 font-semibold border border-indigo-500/20">
                 Split: ${item.participants.length} members
               </span>
+              ${tipPercent > 0 ? `<span class="text-[10px] px-2 py-0.5 rounded bg-[#ccff00]/15 text-[#ccff00] font-semibold border border-[#ccff00]/20">+${tipPercent}% Tip</span>` : ''}
             </div>
             <p class="text-[10px] text-slate-400">For: ${item.participants.join(', ')}</p>
           </div>
           <div class="flex items-center gap-3">
-            <span class="text-sm font-extrabold text-teal-400">₹${item.amount.toFixed(2)}</span>
+            <div class="text-right">
+              <span class="text-sm font-extrabold text-[#ccff00]">${formatMoney(item.amount)}</span>
+              ${tipPercent > 0 ? `<div class="text-[9px] text-slate-500">Base: ${formatMoney(baseAmount, true)}</div>` : ''}
+            </div>
             <button onclick="removeQsItem(${idx})" class="text-slate-500 hover:text-rose-400 transition-colors" title="Delete item">
               <i class="fa-regular fa-trash-can text-sm"></i>
             </button>
@@ -529,7 +660,7 @@ function renderQuickSplit() {
       `;
     }).join('');
   }
-  totalBillSpan.textContent = `Total: ₹${totalBill.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  totalBillSpan.textContent = `Total: ${formatMoney(totalBill)}`;
 
   // 4. Shares Output calculation
   if (qsMembers.length === 0 || qsItems.length === 0) {
@@ -564,11 +695,11 @@ function renderQuickSplit() {
       <div class="bg-slate-950/40 border border-white/5 rounded-2xl p-4 space-y-2 animate-scale-in">
         <div class="flex justify-between items-center">
           <span class="font-bold text-slate-200 text-sm">${name}</span>
-          <span class="text-sm font-extrabold text-teal-400">₹${amt.toFixed(2)}</span>
+          <span class="text-sm font-extrabold text-[#ccff00]">${formatMoney(amt)}</span>
         </div>
         <!-- Custom bar indicator -->
         <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-white/5">
-          <div class="bg-gradient-to-r from-indigo-500 to-teal-400 h-full rounded-full" style="width: ${pct}%"></div>
+          <div class="bg-gradient-to-r from-indigo-500 to-[#ccff00] h-full rounded-full" style="width: ${pct}%"></div>
         </div>
         <div class="text-[10px] text-slate-500 text-right">${pct.toFixed(1)}% of total bill</div>
       </div>
@@ -580,7 +711,7 @@ function renderQuickSplit() {
       ${renderedShares}
       <div class="border-t border-white/10 pt-4 mt-2 flex justify-between items-center">
         <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Combined Bill</span>
-        <span class="text-xl font-black text-teal-400">₹${totalBill.toFixed(2)}</span>
+        <span class="text-xl font-black text-[#ccff00]">${formatMoney(totalBill)}</span>
       </div>
     </div>
   `;
@@ -860,7 +991,7 @@ function renderTripDashboard(balanceSheet, transfers) {
 
   // Header Details
   document.getElementById('dashboard-trip-name').textContent = tripData.name;
-  const expiryDate = new Date(tripData.expires_at).toLocaleDateString('en-IN', {
+  const expiryDate = new Date(tripData.expires_at).toLocaleDateString(CURRENCIES[activeCurrency].locale, {
     day: 'numeric', month: 'short'
   });
   document.getElementById('dashboard-trip-info').innerHTML = `
@@ -883,10 +1014,10 @@ function renderTripDashboard(balanceSheet, transfers) {
     let statusText = '';
     let statusClass = 'text-slate-400';
     if (m.netBalance > 0.01) {
-      statusText = `gets back ₹${m.netBalance.toFixed(2)}`;
+      statusText = `gets back ${formatMoney(m.netBalance)}`;
       statusClass = 'text-teal-400 font-bold';
     } else if (m.netBalance < -0.01) {
-      statusText = `owes ₹${Math.abs(m.netBalance).toFixed(2)}`;
+      statusText = `owes ${formatMoney(Math.abs(m.netBalance))}`;
       statusClass = 'text-rose-400 font-bold';
     } else {
       statusText = 'settled';
@@ -913,13 +1044,21 @@ function renderTripDashboard(balanceSheet, transfers) {
          </button>`
       : '';
 
+    const colors = getMemberColors(m.name);
+    const initial = m.name.charAt(0).toUpperCase();
+
     return `
       <div class="flex items-center justify-between p-2.5 rounded-xl border border-white/5 bg-slate-950/20 shadow-sm animate-scale-in">
-        <div class="space-y-0.5">
-          <div class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-            <span>${m.name}</span> ${isSimulatedUser}
+        <div class="flex items-center gap-2.5 max-w-[70%]">
+          <span class="h-7 w-7 rounded-full ${colors.bg} ${colors.text} flex items-center justify-center font-black text-xs shrink-0 select-none">
+            ${initial}
+          </span>
+          <div class="space-y-0.5 min-w-0">
+            <div class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+              <span class="truncate">${m.name}</span> ${isSimulatedUser}
+            </div>
+            <div class="text-[10px] text-slate-500 truncate">Paid: ${formatMoney(m.totalPaid, true)} | Share: ${formatMoney(m.totalOwed, true)}</div>
           </div>
-          <div class="text-[10px] text-slate-500">Paid: ₹${m.totalPaid.toFixed(0)} | Share: ₹${m.totalOwed.toFixed(0)}</div>
         </div>
         <div class="flex items-center gap-1">
           <span class="text-xs ${statusClass}">${statusText}</span>
@@ -939,12 +1078,19 @@ function renderTripDashboard(balanceSheet, transfers) {
 
   // Render Add Expense Participant Selection checklist
   const partContainer = document.getElementById('trip-participants-container');
-  partContainer.innerHTML = tripMembers.map(m => `
-    <label class="flex items-center gap-2.5 p-2 bg-slate-900/40 hover:bg-slate-900/80 rounded-lg cursor-pointer transition-colors border border-white/5">
-      <input type="checkbox" value="${m.id}" checked class="custom-checkbox">
-      <span class="text-xs font-semibold text-slate-200 select-none">${m.name}</span>
-    </label>
-  `).join('');
+  partContainer.innerHTML = tripMembers.map(m => {
+    const colors = getMemberColors(m.name);
+    const initial = m.name.charAt(0).toUpperCase();
+    return `
+      <label class="flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all border border-white/5 bg-slate-900/30 hover:bg-slate-900/60 qs-participant-label">
+        <input type="checkbox" value="${m.id}" checked class="qs-participant-checkbox hidden">
+        <span class="h-6 w-6 rounded-full ${colors.bg} ${colors.text} flex items-center justify-center font-black text-xs select-none avatar-indicator shrink-0">
+          ${initial}
+        </span>
+        <span class="text-xs font-semibold text-slate-200 select-none name-label truncate">${m.name}</span>
+      </label>
+    `;
+  }).join('');
 
   // Dashboard Stats Totals
   let totalSpent = 0;
@@ -958,8 +1104,8 @@ function renderTripDashboard(balanceSheet, transfers) {
   const myTotalOwed = activeMemberBalance ? activeMemberBalance.totalOwed : 0;
   const myNet = activeMemberBalance ? activeMemberBalance.netBalance : 0;
 
-  document.getElementById('trip-stat-total').textContent = `₹${totalSpent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-  document.getElementById('trip-stat-my-share').textContent = `₹${myTotalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+  document.getElementById('trip-stat-total').textContent = formatMoney(totalSpent);
+  document.getElementById('trip-stat-my-share').textContent = formatMoney(myTotalOwed);
 
   // ==========================================
   // Render Settlement Suggestion Panels (UPI Flow Trigger)
@@ -1005,7 +1151,7 @@ function renderTripDashboard(balanceSheet, transfers) {
                 <i class="fa-solid fa-arrow-right text-[10px] mx-1 text-slate-500"></i> 
                 <span class="text-teal-400 font-bold">${t.creditorName}</span>
               </div>
-              <p class="text-[10px] text-slate-400">Owes: ₹${t.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              <p class="text-[10px] text-slate-400">Owes: ${formatMoney(t.amount)}</p>
             </div>
             ${btnUpiHtml}
           </div>
@@ -1060,7 +1206,7 @@ function renderTripDashboard(balanceSheet, transfers) {
             <div class="text-xs font-semibold text-slate-200">
               <span class="text-teal-400 font-bold">${p.member_name}</span> paid <span class="text-teal-400 font-bold">${noteData.creditor_name}</span>
             </div>
-            <p class="text-[10px] text-slate-400">Amount: ₹${p.amount.toFixed(2)} via UPI</p>
+            <p class="text-[10px] text-slate-400">Amount: ${formatMoney(p.amount)} via UPI</p>
           </div>
           ${actionHtml}
         </div>
@@ -1083,7 +1229,7 @@ function renderTripDashboard(balanceSheet, transfers) {
         noteData = { description: exp.note || "", participants: [] };
       }
 
-      const dateStr = new Date(exp.created_at).toLocaleDateString('en-IN', {
+      const dateStr = new Date(exp.created_at).toLocaleDateString(CURRENCIES[activeCurrency].locale, {
         hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'
       });
 
@@ -1114,7 +1260,7 @@ function renderTripDashboard(balanceSheet, transfers) {
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <span class="text-sm font-black text-teal-400">₹${exp.amount.toFixed(2)}</span>
+              <span class="text-sm font-black text-teal-400">${formatMoney(exp.amount)}</span>
               ${(exp.member_id === activeMemberId || noteData.creditor_id === activeMemberId) ? `
                 <button onclick="deleteTripExpense('${exp.id}')" class="text-slate-600 hover:text-rose-400 transition-colors" title="Delete record">
                   <i class="fa-regular fa-trash-can text-xs"></i>
@@ -1151,7 +1297,7 @@ function renderTripDashboard(balanceSheet, transfers) {
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <span class="text-sm font-black text-white">₹${exp.amount.toFixed(2)}</span>
+              <span class="text-sm font-black text-white">${formatMoney(exp.amount)}</span>
               <!-- Enable deleting if user is payer of this expense -->
               ${(exp.member_id === activeMemberId) ? `
                 <button onclick="deleteTripExpense('${exp.id}')" class="text-slate-600 hover:text-rose-400 transition-colors" title="Delete expense">
@@ -1202,7 +1348,7 @@ async function confirmSettlementReceipt(expenseId, debtorName, amount) {
 
     if (updateErr) throw updateErr;
 
-    showToast(`Receipt confirmed for ₹${amount.toFixed(2)} from ${debtorName}. Balances updated!`, 'success');
+    showToast(`Receipt confirmed for ${formatMoney(amount)} from ${debtorName}. Balances updated!`, 'success');
   } catch (err) {
     console.error(err);
     showToast('Error confirming payment.', 'error');
@@ -1237,11 +1383,16 @@ function showIdentityModal() {
   } else {
     listDiv.innerHTML = tripMembers.map(m => {
       const isClaimedByOthers = m.device_id && m.device_id !== deviceId;
-      
+      const colors = getMemberColors(m.name);
+      const initial = m.name.charAt(0).toUpperCase();
+
       if (isClaimedByOthers) {
         return `
-          <button onclick="promptReclaimIdentity('${m.id}', '${m.name}')" class="w-full text-left p-3.5 bg-slate-950/20 hover:bg-amber-400/10 border border-white/5 hover:border-amber-500/30 text-slate-400 rounded-xl font-semibold text-xs transition-all flex justify-between items-center group select-none animate-scale-in">
-            <span class="flex items-center gap-1.5">
+          <button onclick="promptReclaimIdentity('${m.id}', '${m.name}')" class="w-full text-left p-2.5 bg-slate-950/20 hover:bg-amber-400/10 border border-white/5 hover:border-amber-500/30 text-slate-400 rounded-xl font-semibold text-xs transition-all flex justify-between items-center group select-none animate-scale-in">
+            <span class="flex items-center gap-2.5">
+              <span class="h-6 w-6 rounded-full ${colors.bg} ${colors.text} flex items-center justify-center font-black text-[10px] shrink-0 select-none">
+                ${initial}
+              </span>
               <span>${m.name}</span>
               <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold uppercase tracking-wide">Linked</span>
             </span>
@@ -1250,8 +1401,13 @@ function showIdentityModal() {
         `;
       } else {
         return `
-          <button onclick="claimAndSetIdentity('${m.id}')" class="w-full text-left p-3.5 bg-slate-950/60 hover:bg-teal-400 hover:text-slate-950 rounded-xl border border-white/5 font-semibold text-xs text-slate-200 hover:border-teal-400 transition-all flex justify-between items-center group select-none animate-scale-in">
-            <span>${m.name}</span>
+          <button onclick="claimAndSetIdentity('${m.id}')" class="w-full text-left p-2.5 bg-slate-950/60 hover:bg-teal-400 hover:text-slate-950 rounded-xl border border-white/5 font-semibold text-xs text-slate-200 hover:border-teal-400 transition-all flex justify-between items-center group select-none animate-scale-in">
+            <span class="flex items-center gap-2.5">
+              <span class="h-6 w-6 rounded-full ${colors.bg} ${colors.text} flex items-center justify-center font-black text-[10px] shrink-0 select-none">
+                ${initial}
+              </span>
+              <span>${m.name}</span>
+            </span>
             <i class="fa-solid fa-chevron-right text-[10px] text-slate-500 group-hover:text-slate-950 transition-colors"></i>
           </button>
         `;
@@ -1345,7 +1501,7 @@ async function claimAndSetIdentity(memberId) {
 }
 
 async function rejectSettlementReceipt(expenseId, debtorName, amount) {
-  if (!confirm(`Are you sure you did not receive ₹${amount.toFixed(2)} from ${debtorName}? This will reject the settlement and restore their debt.`)) return;
+  if (!confirm(`Are you sure you did not receive ${formatMoney(amount)} from ${debtorName}? This will reject the settlement and restore their debt.`)) return;
   showLoading(true);
   try {
     const { error } = await supabaseClient.from('expenses').delete().eq('id', expenseId);
@@ -1452,7 +1608,7 @@ async function resetMemberDevice(memberId, name) {
 function openUpiModal(creditorId, creditorName, amount) {
   const modal = document.getElementById('upi-modal');
   document.getElementById('upi-creditor-name').textContent = creditorName;
-  document.getElementById('upi-amount').textContent = `₹${amount.toFixed(2)}`;
+  document.getElementById('upi-amount').textContent = formatMoney(amount);
   document.getElementById('upi-vpa').textContent = `${creditorName.toLowerCase().replace(/\s+/g, '')}@upi`;
 
   // Attach metadata to pay button
@@ -1560,14 +1716,14 @@ function runSelfTests() {
     });
   });
 
-  console.assert(calcShares['A'] === 3400, `Assertion 1.1 Failed: A has ₹${calcShares['A']}, expected 3400`);
-  console.assert(calcShares['B'] === 3400, `Assertion 1.2 Failed: B has ₹${calcShares['B']}, expected 3400`);
-  console.assert(calcShares['C'] === 3400, `Assertion 1.3 Failed: C has ₹${calcShares['C']}, expected 3400`);
-  console.assert(calcShares['D'] === 2400, `Assertion 1.4 Failed: D has ₹${calcShares['D']}, expected 2400`);
-  console.assert(calcShares['E'] === 2400, `Assertion 1.5 Failed: E has ₹${calcShares['E']}, expected 2400`);
+  console.assert(calcShares['A'] === 3400, `Assertion 1.1 Failed: A has ${calcShares['A']}, expected 3400`);
+  console.assert(calcShares['B'] === 3400, `Assertion 1.2 Failed: B has ${calcShares['B']}, expected 3400`);
+  console.assert(calcShares['C'] === 3400, `Assertion 1.3 Failed: C has ${calcShares['C']}, expected 3400`);
+  console.assert(calcShares['D'] === 2400, `Assertion 1.4 Failed: D has ${calcShares['D']}, expected 2400`);
+  console.assert(calcShares['E'] === 2400, `Assertion 1.5 Failed: E has ${calcShares['E']}, expected 2400`);
 
   const totalCalculated = Object.values(calcShares).reduce((acc, curr) => acc + curr, 0);
-  console.assert(totalCalculated === 15000, `Assertion 1.6 Failed: Total Sum is ₹${totalCalculated}, expected 15000`);
+  console.assert(totalCalculated === 15000, `Assertion 1.6 Failed: Total Sum is ${totalCalculated}, expected 15000`);
 
   console.log('Assertion 1 (Quick Split Math Verification): PASSED ✅');
 
