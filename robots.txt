@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://spliteasy.in/sitemap.xml
+Sitemap: https://lemesplit.vercel.app/sitemap.xml
