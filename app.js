@@ -112,10 +112,156 @@ window.addEventListener('DOMContentLoaded', () => {
 // Watch for hash change (e.g. going from # to #AGY42)
 window.addEventListener('hashchange', handleRouting);
 
+// ==========================================
+// MOCK SUPABASE CLIENT FOR TESTING / SCREENSHOTS
+// ==========================================
+let mockRealtimeCallbacks = [];
+function getMockDb() {
+  let db = JSON.parse(sessionStorage.getItem('mock_supabase_db'));
+  if (!db) {
+    db = { trips: [], members: [], expenses: [] };
+    sessionStorage.setItem('mock_supabase_db', JSON.stringify(db));
+  }
+  return db;
+}
+function saveMockDb(db) {
+  sessionStorage.setItem('mock_supabase_db', JSON.stringify(db));
+}
+function triggerRealtime(table, event, record) {
+  setTimeout(() => {
+    mockRealtimeCallbacks.forEach(cb => {
+      if (cb.table === table && (cb.event === '*' || cb.event === event)) {
+        cb.callback({
+          new: event === 'DELETE' ? null : record,
+          old: event === 'INSERT' ? null : { id: record.id }
+        });
+      }
+    });
+  }, 50);
+}
+
+class MockSupabaseQueryBuilder {
+  constructor(table) {
+    this.table = table;
+    this.filters = [];
+    this.orderBy = null;
+  }
+  select(fields = '*') { return this; }
+  insert(data) {
+    const db = getMockDb();
+    const records = Array.isArray(data) ? data : [data];
+    const inserted = [];
+    records.forEach(r => {
+      const newRecord = { ...r };
+      if (!newRecord.id) {
+        newRecord.id = this.table === 'members' || this.table === 'expenses' ? 'mock-' + this.table + '-' + Math.random().toString(36).substring(2, 9) : 'MOCK-TRIP';
+      }
+      if (!newRecord.created_at) {
+        newRecord.created_at = new Date().toISOString();
+      }
+      db[this.table].push(newRecord);
+      inserted.push(newRecord);
+      triggerRealtime(this.table, 'INSERT', newRecord);
+    });
+    saveMockDb(db);
+    return Promise.resolve({ data: inserted, error: null });
+  }
+  update(data) {
+    const db = getMockDb();
+    const updated = [];
+    db[this.table] = db[this.table].map(r => {
+      if (this.matchFilters(r)) {
+        const newRecord = { ...r, ...data };
+        updated.push(newRecord);
+        triggerRealtime(this.table, 'UPDATE', newRecord);
+        return newRecord;
+      }
+      return r;
+    });
+    saveMockDb(db);
+    return Promise.resolve({ data: updated, error: null });
+  }
+  delete() {
+    const db = getMockDb();
+    const deleted = [];
+    db[this.table] = db[this.table].filter(r => {
+      if (this.matchFilters(r)) {
+        deleted.push(r);
+        triggerRealtime(this.table, 'DELETE', r);
+        return false;
+      }
+      return true;
+    });
+    saveMockDb(db);
+    return Promise.resolve({ data: deleted, error: null });
+  }
+  eq(field, value) {
+    this.filters.push({ field, value });
+    return this;
+  }
+  order(field, options) {
+    this.orderBy = { field, ascending: options ? options.ascending : true };
+    return this;
+  }
+  maybeSingle() {
+    return this.execute().then(data => ({ data: data.length > 0 ? data[0] : null, error: null }));
+  }
+  single() {
+    return this.execute().then(data => ({ data: data[0] || null, error: data.length > 0 ? null : new Error('No row found') }));
+  }
+  then(onfulfilled, onrejected) {
+    return this.execute().then(data => onfulfilled({ data, error: null }), onrejected);
+  }
+  execute() {
+    const db = getMockDb();
+    let data = db[this.table] || [];
+    data = data.filter(r => this.matchFilters(r));
+    if (this.orderBy) {
+      const { field, ascending } = this.orderBy;
+      data.sort((a, b) => {
+        let valA = a[field];
+        let valB = b[field];
+        if (typeof valA === 'string') {
+          return ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return ascending ? valA - valB : valB - valA;
+      });
+    }
+    return Promise.resolve(data);
+  }
+  matchFilters(r) {
+    return this.filters.every(f => r[f.field] === f.value);
+  }
+}
+
+const mockSupabaseClient = {
+  from(table) { return new MockSupabaseQueryBuilder(table); },
+  channel(name) {
+    return {
+      on(event, filter, callback) {
+        mockRealtimeCallbacks.push({ table: filter.table, event, callback });
+        return this;
+      },
+      subscribe(statusCallback) {
+        if (statusCallback) statusCallback('SUBSCRIBED');
+        return this;
+      }
+    };
+  },
+  removeChannel(channel) {
+    mockRealtimeCallbacks = [];
+  }
+};
+
 /**
  * Initialize Supabase client if credentials exist in localStorage
  */
 function initSupabase() {
+  if (new URLSearchParams(window.location.search).has('mock')) {
+    supabaseClient = mockSupabaseClient;
+    console.log('Supabase mocked successfully.');
+    return;
+  }
   if (supabaseUrl && supabaseKey) {
     try {
       supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
